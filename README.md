@@ -1,2 +1,2 @@
-# Illsuia
-functioning repo
+# Illusia
+Hackathon project (5 team members)

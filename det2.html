@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Illusia | Deepfake Forensics</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-color: #030305;
+            --panel-bg: rgba(20, 20, 25, 0.65);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --text-main: #f8fafc;
+            --text-muted: #a1a1aa;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            padding: 1.5rem 3rem;
+            background: rgba(3, 3, 5, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #a855f7, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .api-key-btn {
+            background: transparent;
+            border: 1px solid var(--panel-border);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .api-key-btn:hover {
+            border-color: var(--text-main);
+            color: var(--text-main);
+        }
+
+        .api-key-btn.has-key {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        /* Main Container */
+        main {
+            flex: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        /* Upload Area */
+        .upload-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--panel-border);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            background: rgba(30, 41, 59, 0.3);
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .drop-zone i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .drop-zone p {
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .drop-zone .browse-text {
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .image-preview-container {
+            display: none;
+            margin-top: 2rem;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            background: #000;
+        }
+
+        .image-preview {
+            width: 100%;
+            height: auto;
+            display: block;
+            max-height: 400px;
+            object-fit: contain;
+        }
+
+        .clear-image {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .clear-image:hover {
+            background: rgba(239, 68, 68, 0.8);
+        }
+
+        .action-btn {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: all 0.3s ease;
+            display: none;
+        }
+
+        .action-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .action-btn:disabled {
+            background: var(--panel-border);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .action-btn-secondary {
+            width: 100%;
+            background: transparent;
+            color: var(--text-main);
+            border: 2px solid var(--panel-border);
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .action-btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: var(--panel-border);
+            color: var(--text-muted);
+        }
+
+        /* Results Area */
+        .results-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            min-height: 400px;
+        }
+
+        .results-header {
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .results-header h2 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-badge {
+            padding: 0.4rem 1rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status-badge.ai {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            display: inline-block;
+        }
+
+        .status-badge.real {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            display: inline-block;
+        }
+
+        .status-badge.unknown {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            display: inline-block;
+        }
+
+        .results-content {
+            flex: 1;
+            color: var(--text-muted);
+            line-height: 1.7;
+            overflow-y: auto;
+        }
+
+        .results-content.has-data {
+            color: var(--text-main);
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-color);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close-modal:hover {
+            color: var(--text-main);
+        }
+
+        .modal h2 {
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-group .hint {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .form-group .hint a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .save-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+        }
+
+        .save-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        /* Loader */
+        .loader {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 0;
+        }
+
+        .loader.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(79, 70, 229, 0.2);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .markdown-body {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .markdown-body p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .markdown-body ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .markdown-body ul li {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1rem 1.2rem;
+            border-radius: 12px;
+            position: relative;
+            padding-left: 2.5rem;
+            transition: background 0.2s ease;
+        }
+
+        .markdown-body ul li:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .markdown-body ul li::before {
+            content: '•';
+            position: absolute;
+            left: 1rem;
+            color: var(--primary);
+            font-size: 1.5rem;
+            line-height: 1;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .markdown-body strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">
+            <i class="fa-brands fa-connectdevelop"></i>
+            Illusia
+        </div>
+        <button class="api-key-btn" id="apiKeyBtn">
+            <i class="fa-solid fa-key"></i>
+            <span>Set API Key</span>
+        </button>
+    </header>
+
+    <main>
+        <div class="left-column">
+            <h1>Is it Real or AI?</h1>
+            <p class="subtitle">Upload any image and our advanced Gemini-powered vision model will analyze it for AI
+                generation artifacts, inconsistencies, and unnatural patterns.</p>
+
+            <div class="upload-panel">
+                <div class="drop-zone" id="dropZone">
+                    <input type="file" id="fileInput" class="file-input" accept="image/jpeg, image/png, image/webp" />
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <p>Drag and drop an image here</p>
+                    <p>or <span class="browse-text">browse files</span></p>
+                    <p style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">Supports JPG, PNG, WEBP (Max 5MB)
+                    </p>
+                </div>
+
+                <div class="image-preview-container" id="previewContainer">
+                    <button class="clear-image" id="clearBtn" title="Remove image">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <img src="" alt="Preview" class="image-preview" id="imagePreview">
+                </div>
+
+                <div class="action-buttons" id="actionButtons"
+                    style="display: none; width: 100%; margin-top: 1.5rem; flex-direction: column; gap: 1rem;">
+                    <button class="action-btn" id="analyzeBtn" style="display: block; margin-top: 0;">
+                        <i class="fa-solid fa-magnifying-glass"></i> Analyze if Fake
+                    </button>
+                    <button class="action-btn-secondary" id="findFaceBtn">
+                        <i class="fa-solid fa-users-viewfinder"></i> Find My Face in Demo Gallery
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-column">
+            <div class="results-panel">
+                <div class="results-header">
+                    <h2><i class="fa-solid fa-chart-bar" style="color: var(--primary)"></i> Analysis Results</h2>
+                    <div class="status-badge" id="verdictBadge">PENDING</div>
+                </div>
+
+                <div class="results-content" id="resultsContent">
+                    <div style="text-align: center; color: var(--text-muted); padding-top: 4rem;">
+                        <i class="fa-regular fa-image"
+                            style="font-size: 4rem; opacity: 0.2; margin-bottom: 1rem; display: block;"></i>
+                        Upload an image and run analysis to see detailed results and a final verdict here.
+                    </div>
+                </div>
+
+                <div class="loader" id="loader">
+                    <div class="spinner"></div>
+                    <p>Analyzing image structure, lighting, and anomalies...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- API Key Modal -->
+    <div class="modal" id="apiKeyModal">
+        <div class="modal-content">
+            <button class="close-modal" id="closeModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            <h2>Gemini API Configuration</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; font-size: 0.95rem;">
+                This app uses Google's Gemini Vision API directly from your browser. Your key is stored locally and
+                never sent to our servers.
+            </p>
+            <div class="form-group">
+                <label for="apiKeyInput">Gemini API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="AIzaSy...">
+                <span class="hint">Don't have one? Get it from <a href="https://aistudio.google.com/app/apikey"
+                        target="_blank">Google AI Studio</a>.</span>
+            </div>
+            <button class="save-btn" id="saveKeyBtn">Save Configuration</button>
+        </div>
+    </div>
+
+    <!-- Marked.js for markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Face-API.js for local facial recognition -->
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const clearBtn = document.getElementById('clearBtn');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const findFaceBtn = document.getElementById('findFaceBtn');
+        const actionButtons = document.getElementById('actionButtons');
+        const resultsContent = document.getElementById('resultsContent');
+        const verdictBadge = document.getElementById('verdictBadge');
+        const loader = document.getElementById('loader');
+
+        // Modal Elements
+        const apiKeyBtn = document.getElementById('apiKeyBtn');
+        const apiKeyModal = document.getElementById('apiKeyModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveKeyBtn = document.getElementById('saveKeyBtn');
+
+        // State
+        let currentFile = null;
+        let base64Image = null;
+        let targetFaceDescriptor = null;
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+        let faceApiLoaded = false;
+
+        // Init App
+        async function init() {
+            // Check for saved API key
+            const savedKey = localStorage.getItem('gemini_api_key');
+            if (savedKey) {
+                apiKeyInput.value = savedKey;
+                updateApiKeyBtnState(true);
+            } else {
+                // Open modal if no key is found on load
+                setTimeout(() => openModal(), 1000);
+            }
+
+            // Load face-api models
+            try {
+                console.log("Loading face-api models...");
+                await Promise.all([
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
+                console.log("Face-api models loaded successfully!");
+                faceApiLoaded = true;
+            } catch (error) {
+                console.error("Failed to load face-api models:", error);
+                alert("Failed to load local facial recognition models. Please check your internet connection.");
+            }
+        }
+
+        // --- API Key Management ---
+        function openModal() {
+            apiKeyModal.classList.add('active');
+        }
+
+        function closeModal() {
+            apiKeyModal.classList.remove('active');
+        }
+
+        function updateApiKeyBtnState(hasKey) {
+            if (hasKey) {
+                apiKeyBtn.classList.add('has-key');
+                apiKeyBtn.innerHTML = '<i class="fa-solid fa-check-circle"></i><span>Key Configured</span>';
+            } else {
+                apiKeyBtn.classList.remove('has-key');
+                apiKeyBtn.innerHTML = '<i class="fa-solid fa-key"></i><span>Set API Key</span>';
+            }
+        }
+
+        apiKeyBtn.addEventListener('click', openModal);
+        closeModalBtn.addEventListener('click', closeModal);
+        apiKeyModal.addEventListener('click', (e) => {
+            if (e.target === apiKeyModal) closeModal();
+        });
+
+        saveKeyBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('gemini_api_key', key);
+                updateApiKeyBtnState(true);
+                closeModal();
+            } else {
+                localStorage.removeItem('gemini_api_key');
+                updateApiKeyBtnState(false);
+                closeModal();
+            }
+        });
+
+        // --- File Handling ---
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Highlight drop zone when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        // Handle dropped files
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        });
+
+        // Handle file browse
+        fileInput.addEventListener('change', function () {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const file = files[0];
+
+            // Validate file type
+            if (!file.type.match('image.*')) {
+                alert('Please upload an image file (JPEG, PNG, WEBP).');
+                return;
+            }
+
+            // Validate file size (max 5MB just as a safety limit)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size exceeds 5MB limit. Please upload a smaller image.');
+                return;
+            }
+
+            currentFile = file;
+            displayPreview(file);
+        }
+
+        function displayPreview(file) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+
+            reader.onload = function (e) {
+                imagePreview.src = e.target.result;
+                base64Image = e.target.result.split(',')[1]; // Get only the base64 part
+
+                dropZone.style.display = 'none';
+                previewContainer.style.display = 'block';
+                actionButtons.style.display = 'flex';
+
+                // Reset results
+                resetResults();
+                targetFaceDescriptor = null;
+
+                if (faceApiLoaded) {
+                    // small timeout to ensure image is rendered
+                    setTimeout(async () => {
+                        analyzeBtn.disabled = true;
+                        findFaceBtn.disabled = true;
+                        loader.querySelector('p').textContent = "Extracting facial features locally...";
+                        loader.classList.add('active');
+
+                        try {
+                            const detection = await faceapi.detectSingleFace(imagePreview).withFaceLandmarks().withFaceDescriptor();
+                            if (detection) {
+                                targetFaceDescriptor = detection.descriptor;
+                                console.log("Target face descriptor extracted.");
+                            } else {
+                                console.warn("No face detected in the uploaded image. Facial recognition matching will not work.");
+                            }
+                        } catch (err) {
+                            console.error("Error extracting face:", err);
+                        } finally {
+                            loader.classList.remove('active');
+                            analyzeBtn.disabled = false;
+                            findFaceBtn.disabled = false;
+                        }
+                    }, 100);
+                }
+            }
+        }
+
+        clearBtn.addEventListener('click', () => {
+            currentFile = null;
+            base64Image = null;
+            targetFaceDescriptor = null;
+            fileInput.value = '';
+
+            dropZone.style.display = 'block';
+            previewContainer.style.display = 'none';
+            actionButtons.style.display = 'none';
+
+            resetResults();
+        });
+
+        function resetResults() {
+            resultsContent.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); padding-top: 4rem;">
+                    <i class="fa-regular fa-image" style="font-size: 4rem; opacity: 0.2; margin-bottom: 1rem; display: block;"></i>
+                    Ready for analysis. Click the Analyze button.
+                </div>
+            `;
+            resultsContent.classList.remove('has-data');
+            verdictBadge.style.display = 'none';
+            verdictBadge.className = 'status-badge';
+        }
+
+        // --- Analysis via Gemini API ---
+
+        analyzeBtn.addEventListener('click', async () => {
+            const apiKey = localStorage.getItem('gemini_api_key');
+
+            if (!apiKey) {
+                alert('Please configure your Gemini API Key first.');
+                openModal();
+                return;
+            }
+
+            if (!base64Image || !currentFile) {
+                alert('Please upload an image first.');
+                return;
+            }
+
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+
+            resultsContent.style.display = 'none';
+            loader.classList.add('active');
+            verdictBadge.style.display = 'none';
+
+            try {
+                await callGeminiAPI(apiKey, currentFile.type, base64Image);
+            } catch (error) {
+                console.error("Analysis error:", error);
+
+                let errorMsg = error.message || 'An unknown error occurred while contacting the Gemini API.';
+                let subtext = "Check your API key validity and network connection.";
+
+                if (errorMsg.includes("NetworkError") || errorMsg.includes("Failed to fetch")) {
+                    errorMsg = "Browser blocked the API request (Network Error).";
+                    subtext = "<strong>URGENT:</strong> Do you have an Ad-Blocker (uBlock Origin, AdBlock) or Privacy Shield (like Brave Browser) turned on? They often block frontend requests to Google AI APIs. Please disable them for this file and try again.";
+                }
+
+                loader.classList.remove('active');
+                resultsContent.style.display = 'block';
+
+                resultsContent.innerHTML = `
+                    <div style="color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
+                        <h3 style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Error Occurred
+                        </h3>
+                        <p>${errorMsg}</p>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+                            ${subtext}
+                        </p>
+                    </div>
+                `;
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Analyze Image';
+            }
+        });
+
+        async function callGeminiAPI(apiKey, mimeType, base64Data) {
+            // Using Gemini 3.1 Pro Preview for the highest possible reasoning accuracy
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`;
+
+            const promptInstruction = `
+You are an advanced digital image quality and forensics system.
+Your task is to critically analyze the attached image and determine the probability that it was generated or heavily manipulated by Artificial Intelligence (like Midjourney, Stable Diffusion, DALL-E, or Flux).
+
+First, write down your detailed, step-by-step thought process of looking at the image and evaluating it. Wrap your entire thought process securely inside <thinking> and </thinking> tags.
+
+During your <thinking> phase, you MUST evaluate the image against these advanced criteria:
+
+1. MICRO-TEXTURES & PORES: AI struggles with realistic human skin pores, cloth weaves, and microscopic noise. Look for areas that are too smooth, airbrushed, or have repeating non-organic patterns.
+2. PHYSICAL COHERENCE: Are background lines structurally sound? Do objects intersecting each other make physical sense? Do shadows align perfectly with the light source?
+3. ASYMMETRY & EXTREMITIES: Look closely at pupils (are they perfectly round?), teeth (are they uniformly shaped?), ears, and hands. AI often hallucinates asymmetry in pairs.
+4. EDGE BLEEDING: Do foreground objects merge awkwardly into the background? Are stray hairs blending impossibly into clothing or walls?
+5. GIBBERISH TEXT & LOGOS: Are background signs, clothing brands, or tiny text strings legible, or do they look like alien hieroglyphs?
+6. HYPER-REALISM / CHROMATIC ABERRATION: Does the image look "too perfect"? Is there excessive rim lighting, hyper-vibrant saturation, or artificial lens flares that don't match the camera type?
+7. LOGICAL & CONTEXTUAL ABSURDITY: AI often generates physically impossible or highly improbable scenarios without realizing it (e.g., a person sitting inside a helicopter without a seat, steering a plane from the outside, absurdly scaled animals, or holding objects that don't exist). Does the overall scene actually make logical sense?
+8. EXCESSIVE BOKEH / FAKE DEPTH OF FIELD: Modern AI generators heavily default to extreme background blur (bokeh) to hide their inability to render complex backgrounds. If an image has an unnaturally shallow depth of field where the background is completely melted or blurred out in a way that doesn't match the lighting or expected smartphone/camera lens, aggressively flag it as a high likelihood of AI generation.
+
+CRITICAL ANTI-BIAS WARNING: Do NOT give the image the "benefit of the doubt" just because it looks low quality, blurry, or is taken on a supposed "phone camera". Modern AI models intentionally add blur, film grain, and low-res compression to hide their mistakes (especially in crowds or busy backgrounds like the inside of a plane). A blurry face or confusing background blob is a MASSIVE RED FLAG for AI generation, not a sign of an amateur photographer. Be highly skeptical of background humans.
+
+After your <thinking> block, provide your final analysis. 
+You MUST format your analysis strictly as 3 to 4 SHORT, punchy bullet points summarizing the most critical "Red Flags" (AI indicators) or "Green Flags" (Real Photography indicators) you found. Do NOT write paragraphs. Keep it extremely brief and easy to read.
+
+At the very end of your response, on a new line, you MUST provide your final confidence score that this image is AI generated, formatted exactly like this:
+[AI_CONFIDENCE: X%]
+Where X is a number from 0 to 100 representing the probability (0% = definitely real, 100% = definitely AI).
+For example: [AI_CONFIDENCE: 92%]
+`;
+
+            const payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            { "text": promptInstruction },
+                            {
+                                "inline_data": {
+                                    "mime_type": mimeType,
+                                    "data": base64Data
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "safetySettings": [
+                    { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE" },
+                    { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE" },
+                    { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE" },
+                    { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" }
+                ],
+                "generationConfig": {
+                    "temperature": 0.4,
+                    "topK": 32,
+                    "topP": 0.95,
+                    "maxOutputTokens": 8192,
+                }
+            };
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || `HTTP Error ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.candidates && data.candidates.length > 0) {
+                const candidate = data.candidates[0];
+
+                if (candidate.finishReason !== "STOP" && candidate.finishReason !== "MAX_TOKENS" && candidate.finishReason !== "") {
+                    throw new Error(`The AI stopped generating due to: ${candidate.finishReason}. This often happens if the image or request triggered safety filters.`);
+                }
+
+                // Collect text from all parts (in case the thought process and response are split)
+                if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+                    let fullText = "";
+                    for (const part of candidate.content.parts) {
+                        if (part.text) {
+                            fullText += part.text + "\n";
+                        }
+                    }
+                    processResults(fullText);
+                } else {
+                    throw new Error("The API successfully analyzed the image, but Google's internal filters forced it to return 0 words. This almost ALWAYS happens when an image contains a prominent human face, as Google strictly prohibits its AI from running detailed forensic/PII analyses on real human faces. Try uploading an image of a landscape, animal, or object instead!");
+                }
+            } else if (data.promptFeedback && data.promptFeedback.blockReason) {
+                throw new Error(`Request was blocked by API due to: ${data.promptFeedback.blockReason}`);
+            } else {
+                console.error("Full API Response:", data);
+                throw new Error(`Unrecognizable response format. API returned: ${JSON.stringify(data)}`);
+            }
+        }
+
+        function processResults(resultText) {
+            let aiConfidence = null;
+            let formattedText = resultText;
+            let thoughtProcess = "";
+
+            // Extract <thinking> block
+            const thinkingMatch = resultText.match(/<thinking>([\s\S]*?)<\/thinking>/);
+            if (thinkingMatch && thinkingMatch[1]) {
+                thoughtProcess = thinkingMatch[1].trim();
+                // Remove the thinking block from the main text
+                formattedText = formattedText.replace(/<thinking>[\s\S]*?<\/thinking>/, "");
+            }
+
+            // Extract the [AI_CONFIDENCE: X%]
+            const confidenceMatch = resultText.match(/\[AI_CONFIDENCE:\s*(\d+)%?\]/i);
+            if (confidenceMatch && confidenceMatch[1]) {
+                aiConfidence = parseInt(confidenceMatch[1], 10);
+                formattedText = formattedText.replace(/\[AI_CONFIDENCE:\s*\d+%?\]/gi, "");
+            }
+
+            // Hide loader and show content
+            loader.classList.remove('active');
+            resultsContent.style.display = 'block';
+            resultsContent.classList.add('has-data');
+
+            // Set Verdict Badge
+            verdictBadge.style.display = 'inline-block';
+
+            if (aiConfidence !== null) {
+                if (aiConfidence > 65) {
+                    verdictBadge.className = 'status-badge ai';
+                    verdictBadge.innerHTML = `<i class="fa-solid fa-robot"></i> ${aiConfidence}% LIKELY AI`;
+                } else if (aiConfidence < 35) {
+                    verdictBadge.className = 'status-badge real';
+                    verdictBadge.innerHTML = `<i class="fa-solid fa-camera"></i> ${aiConfidence}% LIKELY AI (REAL)`;
+                } else {
+                    verdictBadge.className = 'status-badge unknown';
+                    verdictBadge.innerHTML = `<i class="fa-solid fa-circle-question"></i> ${aiConfidence}% LIKELY AI (UNCERTAIN)`;
+                }
+            } else {
+                verdictBadge.className = 'status-badge unknown';
+                verdictBadge.innerHTML = '<i class="fa-solid fa-circle-question"></i> UNKNOWN CONFIDENCE';
+            }
+
+            // Build Final HTML
+            let htmlContent = "";
+
+            if (thoughtProcess) {
+                htmlContent += `
+                <details style="margin-bottom: 2rem; background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+                    <summary style="cursor: pointer; font-weight: 600; color: #a855f7; display: flex; align-items: center; gap: 0.5rem; user-select: none;">
+                        <i class="fa-solid fa-brain"></i> View AI Thought Process
+                    </summary>
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted); white-space: pre-wrap; font-family: monospace;">${thoughtProcess.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+                </details>
+                `;
+            }
+
+            // Convert markdown and inject
+            const parsedHTML = marked.parse(formattedText.trim());
+            htmlContent += `<div class="markdown-body">${parsedHTML}</div>`;
+
+            resultsContent.innerHTML = htmlContent;
+        }
+
+        // --- Find Face in Demo Gallery Logic ---
+        findFaceBtn.addEventListener('click', async () => {
+            const apiKey = localStorage.getItem('gemini_api_key');
+
+            if (!apiKey) {
+                alert('Please configure your Gemini API Key first.');
+                openModal();
+                return;
+            }
+
+            if (!base64Image || !currentFile) {
+                alert('Please upload an image first.');
+                return;
+            }
+
+            if (!faceApiLoaded || !targetFaceDescriptor) {
+                alert("Local facial recognition models are not loaded or no face was detected in target image.");
+                return;
+            }
+
+            // UI state updates
+            analyzeBtn.disabled = true;
+            findFaceBtn.disabled = true;
+            findFaceBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Scraping & Analyzing Gallery...';
+
+            resultsContent.style.display = 'none';
+            loader.querySelector('p').textContent = "Scraping web and running local facial matching...";
+            loader.classList.add('active');
+            verdictBadge.style.display = 'none';
+
+            try {
+                // 1. Fetch the user's target image (base64Image is already available)
+
+                // 2. Scrape fake social media(zzchief.github.io) for images
+                const galleryImagesBase64 = [];
+                const targetUrl = 'https://zzchief.github.io/';
+
+                try {
+                    // Fetch the HTML content
+                    const htmlResponse = await fetch(targetUrl);
+                    if (!htmlResponse.ok) throw new Error(`Failed to fetch target URL: ${htmlResponse.status}`);
+
+                    const htmlText = await htmlResponse.text();
+
+                    // Parse the HTML
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(htmlText, 'text/html');
+
+                    // Find all image tags
+                    const imgTags = doc.querySelectorAll('img');
+
+                    for (let i = 0; i < imgTags.length; i++) {
+                        const img = imgTags[i];
+                        let src = img.getAttribute('src');
+
+                        if (!src || src === 'placeholder.jpg') continue; // Skip placeholders or empty srcs
+
+                        // Resolve relative URLs
+                        if (!src.startsWith('http')) {
+                            // Try to construct absolute URL base on the target URL
+                            try {
+                                src = new URL(src, targetUrl).href;
+                            } catch (e) {
+                                console.warn(`Could not resolve URL: ${src}`);
+                                continue;
+                            }
+                        }
+
+                        try {
+                            const imgResponse = await fetch(src);
+                            if (!imgResponse.ok) continue;
+                            const blob = await imgResponse.blob();
+
+                            // Only process actual images
+                            if (!blob.type.startsWith('image/')) continue;
+
+                            const base64 = await new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                                reader.readAsDataURL(blob);
+                            });
+
+                            // Use the alt text or filename as ID
+                            const imgId = img.getAttribute('alt') || `Scraped_Image_${i + 1}`;
+
+                            galleryImagesBase64.push({
+                                id: imgId,
+                                url: src,
+                                base64: base64,
+                                mimeType: blob.type
+                            });
+
+                            console.log(`Successfully scraped: ${imgId}`);
+                        } catch (err) {
+                            console.warn('Failed to fetch individual image:', src, err);
+                        }
+                    }
+
+                    if (galleryImagesBase64.length === 0) {
+                        throw new Error("Could not find or load any real images from zzchief.github.io. Note: if the images are local file paths, the browser cannot read them securely.");
+                    }
+
+                } catch (err) {
+                    throw err; // Re-throw to be caught by main catch block
+                }
+
+                // 3. Perform Local Face Matching
+                loader.querySelector('p').textContent = `Scanning ${galleryImagesBase64.length} images for your face locally...`;
+                let matchedImages = [];
+
+                for (let imgData of galleryImagesBase64) {
+                    const tempImg = new Image();
+                    tempImg.src = "data:" + imgData.mimeType + ";base64," + imgData.base64;
+
+                    await new Promise((resolve) => {
+                        tempImg.onload = resolve;
+                        tempImg.onerror = resolve;
+                    });
+
+                    try {
+                        const detection = await faceapi.detectSingleFace(tempImg).withFaceLandmarks().withFaceDescriptor();
+                        if (detection) {
+                            const distance = faceapi.euclideanDistance(targetFaceDescriptor, detection.descriptor);
+                            console.log(`Distance for ${imgData.id}: ${distance}`);
+                            if (distance < 0.6) { // 0.6 threshold for Face-API.js
+                                matchedImages.push(imgData);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Face detection failed for an image", e);
+                    }
+                }
+
+                if (matchedImages.length === 0) {
+                    processFaceMatchResults("[VERDICT: NO MATCH]\n\nLocal facial recognition completed. Found 0 matches.");
+                    return; // Stop here, no need to call Gemini
+                }
+
+                // 4. Construct Gemini Prompt payload (deepfake analysis only)
+                loader.querySelector('p').textContent = `Found ${matchedImages.length} match(es) locally. Analyzing for deepfakes...`;
+                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`;
+
+                let promptParts = [
+                    {
+                        "text": `You are an expert deepfake forensic tool.
+We have used local facial recognition to verify that the TARGET SUBJECT (first image) is indeed present in the MATCHED GALLERY IMAGE(S) provided below.
+Your task is ONLY to analyze the MATCHED GALLERY IMAGE(S) to determine if they are DEEPFAKES/AI-GENERATED or REAL PHOTOGRAPHS.
+
+Target Subject:` },
+                    { "inline_data": { "mime_type": currentFile.type, "data": base64Image } }
+                ];
+
+                promptParts.push({ "text": "\n\n--- MATCHED GALLERY IMAGES ---\n" });
+
+                for (let img of matchedImages) {
+                    promptParts.push({ "text": `\nMatched Image ID: ${img.id}\nMatched Image URL: ${img.url}` });
+                    promptParts.push({ "inline_data": { "mime_type": img.mimeType, "data": img.base64 } });
+                }
+
+                promptParts.push({
+                    "text": `\n--- END OF MATCHED GALLERY IMAGES ---
+
+First, output a detailed <thinking> block analyzing the matched image(s) for AI generation artifacts (smooth skin, strange background lines, gibberish text, asymmetrical features, perfect lighting, excessive blur).
+
+After your <thinking> block, summarize your findings using exactly 2 to 4 VERY SHORT bullet points. 
+State your conclusion on whether the specific matched gallery image(s) are REAL or DEEPFAKE/AI-GENERATED.
+
+Finally, end your response with exactly ONE of these tags on a new line representing the OVERALL result for the match:
+[VERDICT: MATCH FOUND - DEEPFAKE]
+[VERDICT: MATCH FOUND - REAL]
+`});
+
+                const payload = {
+                    "contents": [{ "parts": promptParts }],
+                    "safetySettings": [
+                        { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE" },
+                        { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE" },
+                        { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE" },
+                        { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" }
+                    ],
+                    "generationConfig": {
+                        "temperature": 0.4,
+                        "maxOutputTokens": 8192
+                    }
+                };
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP Error ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts) {
+                    let fullText = "";
+                    for (const part of data.candidates[0].content.parts) {
+                        if (part.text) fullText += part.text + "\n";
+                    }
+                    processFaceMatchResults(fullText);
+                } else {
+                    throw new Error("Google's API analyzed the image but returned 0 words. Their internal systems explicitly block API users from doing 'Facial Recognition' on real people. It will forcefully silence the AI if it detects you are matching human faces.");
+                }
+
+            } catch (error) {
+                console.error("Match error:", error);
+
+                let errorMsg = error.message || "An unknown error occurred.";
+                let subtext = "";
+
+                if (errorMsg.includes("NetworkError") || errorMsg.includes("Failed to fetch")) {
+                    errorMsg = "Browser blocked the API request (Network Error).";
+                    subtext = "<br><br><strong>URGENT:</strong> Do you have an Ad-Blocker (uBlock Origin, AdBlock) or Privacy Shield (like Brave Browser) turned on? They often block frontend requests to Google AI APIs. Please disable them for this file and try again.";
+                }
+
+                loader.classList.remove('active');
+                resultsContent.style.display = 'block';
+                resultsContent.innerHTML = `<div style="color: var(--danger); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1);">
+                    <h3 style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-triangle-exclamation"></i> Error</h3>
+                    <p>${errorMsg}${subtext}</p>
+                </div>`;
+            } finally {
+                analyzeBtn.disabled = false;
+                findFaceBtn.disabled = false;
+                findFaceBtn.innerHTML = '<i class="fa-solid fa-users-viewfinder"></i> Find My Face in Demo Gallery';
+                loader.querySelector('p').textContent = "Analyzing image structure, lighting, and anomalies..."; // Reset
+            }
+        });
+
+        function processFaceMatchResults(resultText) {
+            let verdict = "UNKNOWN";
+            let formattedText = resultText;
+            let thoughtProcess = "";
+
+            const thinkingMatch = resultText.match(/<thinking>([\s\S]*?)<\/thinking>/);
+            if (thinkingMatch && thinkingMatch[1]) {
+                thoughtProcess = thinkingMatch[1].trim();
+                formattedText = formattedText.replace(/<thinking>[\s\S]*?<\/thinking>/, "");
+            }
+
+            if (resultText.includes("[VERDICT: MATCH FOUND - DEEPFAKE]")) {
+                verdict = "MATCH - DEEPFAKE";
+                formattedText = formattedText.replace("[VERDICT: MATCH FOUND - DEEPFAKE]", "");
+            } else if (resultText.includes("[VERDICT: MATCH FOUND - REAL]")) {
+                verdict = "MATCH - REAL";
+                formattedText = formattedText.replace("[VERDICT: MATCH FOUND - REAL]", "");
+            } else if (resultText.includes("[VERDICT: NO MATCH]")) {
+                verdict = "NO MATCH";
+                formattedText = formattedText.replace("[VERDICT: NO MATCH]", "");
+            }
+
+            loader.classList.remove('active');
+            resultsContent.style.display = 'block';
+            resultsContent.classList.add('has-data');
+            verdictBadge.style.display = 'inline-block';
+
+            if (verdict === "MATCH - DEEPFAKE") {
+                verdictBadge.className = 'status-badge ai';
+                verdictBadge.innerHTML = '<i class="fa-solid fa-user-shield"></i> MATCH FOUND (DEEPFAKE)';
+            } else if (verdict === "MATCH - REAL") {
+                verdictBadge.className = 'status-badge warning';
+                // We don't have a specific warning class yet, so we'll just style it inline or use real
+                verdictBadge.style.background = 'rgba(245, 158, 11, 0.2)';
+                verdictBadge.style.color = 'var(--warning)';
+                verdictBadge.style.border = '1px solid rgba(245, 158, 11, 0.3)';
+                verdictBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> MATCH FOUND (REAL PHOTO)';
+            } else {
+                verdictBadge.className = 'status-badge real';
+                verdictBadge.style = ''; // clear custom styles
+                verdictBadge.innerHTML = '<i class="fa-solid fa-user-check"></i> NO MATCH (SAFE)';
+            }
+
+            let htmlContent = "";
+            if (thoughtProcess) {
+                htmlContent += `
+                <details style="margin-bottom: 2rem; background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+                    <summary style="cursor: pointer; font-weight: 600; color: #a855f7; display: flex; align-items: center; gap: 0.5rem; user-select: none;">
+                        <i class="fa-solid fa-brain"></i> View AI Face Match & Deepfake Details
+                    </summary>
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted); white-space: pre-wrap; font-family: monospace;">${thoughtProcess.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+                </details>
+                `;
+            }
+
+            htmlContent += `<div class="markdown-body">${marked.parse(formattedText.trim())}</div>`;
+            resultsContent.innerHTML = htmlContent;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
